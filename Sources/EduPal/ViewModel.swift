@@ -1,8 +1,11 @@
 import Foundation
 import Observation
 import SkipFuse
+#if canImport(OSLog)
+import OSLog
+#endif
 
-/// The Observable ViewModel used by the application.
+private let logger = Logger(subsystem: "cn.czumc.edupal", category: "ViewModel")
 @Observable public class ViewModel {
     var items: [Item] = loadItems() {
         didSet { saveItems() }
@@ -26,7 +29,6 @@ import SkipFuse
             i.id == item.id ? item : i
         }
     }
-}
 
 /// An individual item held by the ViewModel
 struct Item : Identifiable, Hashable, Codable {
@@ -55,13 +57,12 @@ struct Item : Identifiable, Hashable, Codable {
     var dateTimeString: String {
         date.formatted(date: .abbreviated, time: .shortened)
     }
-}
 
 /// Utilities for defaulting and persising the items in the list
 extension ViewModel {
     private static let savePath = URL.applicationSupportDirectory.appendingPathComponent("appdata.json")
 
-    fileprivate static func loadItems() -> [Item] {
+    private static func loadItems() -> [Item] {
         do {
             let start = Date.now
             let data = try Data(contentsOf: savePath)
@@ -78,7 +79,7 @@ extension ViewModel {
         }
     }
 
-    fileprivate func saveItems() {
+    private func saveItems() {
         do {
             let start = Date.now
             let data = try JSONEncoder().encode(items)

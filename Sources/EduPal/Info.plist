@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>cn.czumc.edupal</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>edupal</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>jwqywx.cczu.edu.cn</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>sso.cczu.edu.cn</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>wxxy.cczu.edu.cn</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+	<key>NSCalendarsWriteOnlyUsageDescription</key>
+	<string>需要写入日历以同步课程安排。</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>GetScheduleIntent</string>
+		<string>GetExamScheduleIntent</string>
+		<string>GetGradesIntent</string>
+		<string>GetGPAIntent</string>
+		<string>GetTodayScheduleIntent</string>
+		<string>GetTomorrowScheduleIntent</string>
+		<string>GetNextClassIntent</string>
+		<string>HasClassTodayIntent</string>
+		<string>OpenScheduleIntent</string>
+		<string>OpenGradesIntent</string>
+	</array>
+</dict>
+</plist>

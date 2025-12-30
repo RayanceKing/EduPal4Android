@@ -1,177 +1,143 @@
+//
+//  ContentView.swift
+//  CCZUHelper
+//
+//  Created by rayanceking on 2025/11/30.
+//
+
 import SwiftUI
+import SwiftData
 
-enum ContentTab: String, Hashable {
-    case welcome, home, settings
-}
-
+/// 主内容视图 - 包含三个TabView: 课程表、服务、茶楼
 struct ContentView: View {
-    @AppStorage("tab") var tab = ContentTab.welcome
-    @AppStorage("name") var welcomeName = "Skipper"
-    @AppStorage("appearance") var appearance = ""
-    @State var viewModel = ViewModel()
-
+    @Environment(\.modelContext) var modelContext
+    @Environment(AppSettings.self) var settings
+    
+    @Binding var resetPasswordToken: String?
     var body: some View {
-        TabView(selection: $tab) {
-            NavigationStack {
-                WelcomeView(welcomeName: $welcomeName)
-            }
-            .tabItem { Label("Welcome", systemImage: "heart.fill") }
-            .tag(ContentTab.welcome)
-
-            NavigationStack {
-                ItemListView()
-                    .navigationTitle(Text("\(viewModel.items.count) Items"))
-            }
-            .tabItem { Label("Home", systemImage: "house.fill") }
-            .tag(ContentTab.home)
-
-            NavigationStack {
-                SettingsView(appearance: $appearance, welcomeName: $welcomeName)
-                    .navigationTitle("Settings")
-            }
-            .tabItem { Label("Settings", systemImage: "gearshape.fill") }
-            .tag(ContentTab.settings)
-        }
-        .environment(viewModel)
-        .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
+        iOSContentView(resetPasswordToken: $resetPasswordToken)
     }
 }
 
-struct WelcomeView : View {
-    @State var heartBeating = false
-    @Binding var welcomeName: String
+struct iOSContentView: View {
+    @Environment(\.modelContext) var modelContext
+    @Environment(AppSettings.self) var settings
+    @State var teahouseSearchText = ""
 
+    @Binding var resetPasswordToken: String?
+    //@State private var showResetLoginSheet: Bool = false
     var body: some View {
-        VStack(spacing: 0) {
-            Text("Hello [\(welcomeName)](https://skip.tools)!")
-                .padding()
-            Image(systemName: "heart.fill")
-                .foregroundStyle(.red)
-                .scaleEffect(heartBeating ? 1.5 : 1.0)
-                .animation(.easeInOut(duration: 1).repeatForever(), value: heartBeating)
-                .task { heartBeating = true }
+        // 使用兼容的 TabView
+        TabView {
+            ScheduleView()
+                .tabItem {
+                    Label("tab.schedule".localized, systemImage: "calendar")
+                }
+
+            ServicesView()
+                .tabItem {
+                    Label("tab.services".localized, systemImage: "square.grid.2x2")
+                }
+
+            TeahouseView(resetPasswordToken: $resetPasswordToken)
+                .tabItem {
+                    Label("tab.teahouse".localized, systemImage: "cup.and.saucer")
+                }
         }
-        .font(.largeTitle)
     }
-}
+struct SearchTabView: View {
+    @Binding var searchText: String
+    @Environment(\.modelContext) var modelContext
+    @Query(sort: \TeahousePost.createdAt, order: .reverse) var allPosts: [TeahousePost]
+    @StateObject var authViewModel = AuthViewModel()
+    @State var isSearchPresented = false
 
-struct ItemListView : View {
-    @Environment(ViewModel.self) var viewModel: ViewModel
+    private var backgroundColor: Color {
+        Color(.systemBackground)
+    }
+
+    private var searchResults: [TeahousePost] {
+        guard !searchText.isEmpty else { return [] }
+        return allPosts.filter { post in
+            post.title.localizedCaseInsensitiveContains(searchText) ||
+            post.content.localizedCaseInsensitiveContains(searchText) ||
+            post.author.localizedCaseInsensitiveContains(searchText)
+        }
+    }
 
     var body: some View {
-        List {
-            ForEach(viewModel.items) { item in
-                NavigationLink(value: item) {
-                    Label {
-                        Text(item.itemTitle)
-                    } icon: {
-                        if item.favorite {
-                            Image(systemName: "star.fill")
-                                .foregroundStyle(.yellow)
+        NavigationStack {
+            VStack(spacing: 0) {
+                HStack {
+                    Text(NSLocalizedString("teahouse.search_title", comment: "Search"))
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+
+                if searchText.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 44))
+                            .foregroundStyle(.secondary)
+                        Text(NSLocalizedString("teahouse.search_hint", comment: "Enter keywords to search"))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(backgroundColor)
+                } else if searchResults.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.magnifyingglass")
+                            .font(.system(size: 44))
+                            .foregroundStyle(.secondary)
+                        Text(NSLocalizedString("teahouse.no_results", comment: "No posts found"))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(backgroundColor)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(searchResults) { post in
+                                NavigationLink {
+                                    PostDetailView(post: post)
+                                        .environmentObject(authViewModel)
+                                } label: {
+                                    PostRow(post: post, onLike: { }, authViewModel: authViewModel)
+                                        .padding(.horizontal, 16)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.vertical, 8)
+                            }
                         }
                     }
+                    .background(backgroundColor)
                 }
             }
-            .onDelete { offsets in
-                viewModel.items.remove(atOffsets: offsets)
-            }
-            .onMove { fromOffsets, toOffset in
-                viewModel.items.move(fromOffsets: fromOffsets, toOffset: toOffset)
-            }
-        }
-        .navigationDestination(for: Item.self) { item in
-            ItemView(item: item)
-                .navigationTitle(item.itemTitle)
-        }
-        .toolbar {
-            ToolbarItemGroup {
-                Button {
-                    withAnimation {
-                        viewModel.items.insert(Item(), at: 0)
-                    }
-                } label: {
-                    Label("Add", systemImage: "plus")
-                }
+            .searchable(text: $searchText, isPresented: $isSearchPresented)
+            .onAppear {
+                // 返回时收起搜索栏与键盘
+                isSearchPresented = false
             }
         }
     }
 }
 
-struct ItemView : View {
-    @State var item: Item
-    @Environment(ViewModel.self) var viewModel: ViewModel
-    @Environment(\.dismiss) var dismiss
-
-    var body: some View {
-        Form {
-            TextField("Title", text: $item.title)
-                .textFieldStyle(.roundedBorder)
-            Toggle("Favorite", isOn: $item.favorite)
-            DatePicker("Date", selection: $item.date)
-            Text("Notes").font(.title3)
-            TextEditor(text: $item.notes)
-                .border(Color.secondary, width: 1.0)
-        }
-        .navigationBarBackButtonHidden()
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
-                    dismiss()
-                }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    viewModel.save(item: item)
-                    dismiss()
-                }
-                .disabled(!viewModel.isUpdated(item))
-            }
+#if DEBUG
+struct ContentView_Previews: PreviewProvider {
+    struct PreviewWrapper: View {
+        @State var token: String? = nil
+        var body: some View {
+            ContentView(resetPasswordToken: $token)
+                .environment(AppSettings())
+                .modelContainer(for: [Course.self, Schedule.self], inMemory: true)
         }
     }
-}
-
-struct SettingsView : View {
-    @Binding var appearance: String
-    @Binding var welcomeName: String
-
-    var body: some View {
-        Form {
-            TextField("Name", text: $welcomeName)
-            Picker("Appearance", selection: $appearance) {
-                Text("System").tag("")
-                Text("Light").tag("light")
-                Text("Dark").tag("dark")
-            }
-            if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
-               let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
-                Text("Version \(version) (\(buildNumber))")
-            }
-            HStack {
-                PlatformHeartView()
-                Text("Powered by [Skip](https://skip.tools)")
-            }
-        }
-    }
-}
-
-/// A view that shows a blue heart on iOS and a green heart on Android.
-struct PlatformHeartView : View {
-    var body: some View {
-        #if os(Android)
-        ComposeView {
-            HeartComposer()
-        }
-        #else
-        Text(verbatim: "💙")
-        #endif
-    }
-}
-
-#if SKIP
-/// Use a ContentComposer to integrate Compose content. This code will be transpiled to Kotlin.
-struct HeartComposer : ContentComposer {
-    @Composable func Compose(context: ComposeContext) {
-        androidx.compose.material3.Text("💚", modifier: context.modifier)
+    static var previews: some View {
+        PreviewWrapper()
     }
 }
 #endif

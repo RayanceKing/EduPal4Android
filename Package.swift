@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "edupal4android",
     defaultLocalization: "en",
-    platforms: [.iOS(.v17), .macOS(.v14)],
+    platforms: [.macOS(.v14), .iOS(.v17)],
     products: [
         .library(name: "EduPal", type: .dynamic, targets: ["EduPal"]),
     ],
